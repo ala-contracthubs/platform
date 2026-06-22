@@ -1,0 +1,8 @@
+**/dist
+**/build
+**/.turbo
+**/coverage
+**/.expo
+packages/api-client/src/generated
+pnpm-lock.yaml
+docs/prd

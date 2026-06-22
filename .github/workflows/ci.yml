@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint (incl. module boundaries)
+        run: pnpm lint
+
+      # Runs domain unit tests, use-case tests, integration tests, the Manifest
+      # contract tests, ledger balance/idempotency tests, and the architecture
+      # edge tests (core/case-lifecycle imports no module; only finance/ledger
+      # imports the postings adapter; domain never imports shared/platform|audit).
+      - name: Test
+        run: pnpm test

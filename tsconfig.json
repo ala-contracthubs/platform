@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "packages/types" },
+    { "path": "packages/validation" },
+    { "path": "packages/api-client" },
+    { "path": "packages/ui-tokens" },
+    { "path": "apps/api" }
+  ]
+}
