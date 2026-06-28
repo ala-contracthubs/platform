@@ -1,71 +1,55 @@
 # Contract Hubs — `platform`
 
-A platform where **Module 0 (the backbone)** owns identity, Cases, documents, payments, Wallets, the
-ledger, SLAs, dashboards and notifications **once**. Each service (POA first) plugs in as a **Module**
-via a **Manifest**. The backbone never depends on a Module; a Module talks to the backbone only
-through its declared Manifest contract.
+A pnpm + Turborepo monorepo for the Contract Hubs platform.
 
-> **Status: scaffolding only.** This repo currently contains the folder structure, READMEs and the
-> prerequisite tooling. No domain/application/infrastructure logic has been implemented yet. Build it
-> test-first (red → green → refactor) per [`CLAUDE.md`](./CLAUDE.md).
+> **Status: fresh start.** The repo is currently a minimal monorepo skeleton — workspace
+> tooling and shared config only. Apps and feature packages will be added as the work begins.
 
 ## Layout
 
 ```
-apps/
-  api/      NestJS modular monolith — backbone (src/core) + the POA module (src/modules/poa)
-  web/      Vite + React SPA (TanStack Router + Query) — static on S3 + CloudFront
-  mobile/   Expo managed workflow (EAS dev builds from day one)
 packages/
-  types/        shared TS domain/wire types
-  validation/   zod schemas + Manifest contract-test fixtures
-  api-client/    OpenAPI-generated REST client
-  ui-tokens/    design tokens (RTL/LTR, status colours, money formatting)
-  config/       tsconfig + ESLint module-boundary rules + prettier/jest presets
-docs/
-  ARCHITECTURE.md   layering, bounded contexts, boundary rules (read this)
-  CONTEXT.md        ubiquitous language — source of truth for terms
-  prd/              the PRDs (platform, POA, wallet/finance, messaging, client prototype)
-  adr/              architecture decision records
+  config/   shared presets: ESLint, Prettier, Jest, and tsconfig (base / nest / react)
 ```
 
-See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the bounded contexts, the hexagonal layering,
-the port-placement rule, and the enforced module boundaries.
+Root files wire the workspace together: `pnpm-workspace.yaml`, `turbo.json`,
+`tsconfig.json` (+ `tsconfig.base.json`), `eslint.config.mjs`, and the Prettier/editor configs.
 
 ## Prerequisites
 
-- **Node 20 LTS** (`.nvmrc` → `20`; `nvm use`)
-- **pnpm** (pinned via `packageManager`; `corepack enable`)
+- **Node 24** (`.nvmrc` → `24`; run `nvm use`). Enforced via `engine-strict`.
+- **pnpm** (pinned through `packageManager`; run `corepack enable`).
 
 ## Getting started
 
 ```sh
-nvm use                # Node 20
+nvm use                # Node 24
 corepack enable        # provides the pinned pnpm
 pnpm install           # install + link the workspace
 pnpm typecheck         # tsc across the graph
-pnpm lint              # ESLint incl. module-boundary rules
-pnpm test              # turbo-run the test pyramid
+pnpm lint              # ESLint
+pnpm test              # turbo-run tests
 ```
-
-> Dependency versions in the `package.json` files are sensible starting points — run `pnpm install`
-> and adjust as the implementation lands.
 
 ## Workspace scripts (root)
 
 | Script | Purpose |
 | --- | --- |
-| `pnpm dev` | run app dev servers via Turborepo |
-| `pnpm build` | build all packages + apps |
-| `pnpm lint` | lint + module-boundary enforcement |
+| `pnpm dev` | run dev servers via Turborepo |
+| `pnpm build` | build all packages |
+| `pnpm lint` | lint the workspace |
 | `pnpm typecheck` | type-check the whole graph |
-| `pnpm test` | unit / use-case / integration / e2e + architecture edge tests |
-| `pnpm format` | Prettier write |
+| `pnpm test` | run tests via Turborepo |
+| `pnpm format` | Prettier write (`format:check` to verify) |
 
-## Engineering principles (non-negotiable)
+> With no apps/packages defining these tasks yet, the `turbo run …` scripts simply
+> find nothing to do and exit 0.
 
-- **TDD** — failing test first for all domain and application logic.
-- **DDD** — `CONTEXT.md` is the ubiquitous language; use those exact terms; never an _Avoid_ term.
-- **Clean / Hexagonal** — dependencies point inward; ports & adapters; per-Module layering.
+## Adding a package or app
 
-Start every task by reading the relevant PRD(s) end to end and the affected parts of `CONTEXT.md`.
+1. Create it under `packages/<name>` (or `apps/<name>`, adding `"apps/*"` back to
+   `pnpm-workspace.yaml`).
+2. Give it a `package.json` with the scripts Turborepo should orchestrate
+   (`build` / `lint` / `typecheck` / `test`) and extend a preset from
+   `@contracthubs/config`.
+3. If it's a composite TypeScript project, add it to `references` in the root `tsconfig.json`.
