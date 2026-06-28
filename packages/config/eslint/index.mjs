@@ -1,8 +1,10 @@
-// Shared ESLint flat-config preset for the ContractHubs platform monorepo.
-import boundaries from 'eslint-plugin-boundaries'
+// Shared ESLint flat-config base for the ContractHubs platform monorepo.
+//
+// This is the reusable base every app spreads into its own eslint.config.mjs.
+// Module-boundary enforcement is kept separate (./boundaries.mjs) because its
+// patterns are app-relative and only some apps opt in.
 import tseslint from 'typescript-eslint'
 import prettier from 'eslint-config-prettier'
-import { elements, elementTypesRule, domainRestrictedImports } from './boundaries.mjs'
 
 export default tseslint.config(
   {
@@ -12,33 +14,11 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/coverage/**',
       '**/.expo/**',
-      'packages/api-client/src/generated/**',
+      '**/*.tsbuildinfo',
     ],
   },
 
   ...tseslint.configs.recommended,
-
-  // Module-boundary enforcement across the NestJS app (core / modules / shared).
-  {
-    files: ['apps/api/**/*.ts'],
-    plugins: { boundaries },
-    settings: {
-      'boundaries/elements': elements,
-      'boundaries/include': ['apps/api/src/**/*.ts'],
-    },
-    rules: {
-      'boundaries/element-types': ['error', elementTypesRule],
-      'boundaries/no-unknown-files': 'off',
-    },
-  },
-
-  // The domain layer must stay free of framework / infrastructure imports.
-  {
-    files: ['apps/api/src/**/domain/**/*.ts'],
-    rules: {
-      'no-restricted-imports': ['error', domainRestrictedImports],
-    },
-  },
 
   // Prettier owns formatting — disable conflicting stylistic rules.
   prettier,

@@ -1,0 +1,23 @@
+// Prisma schema for @contracthubs/api.
+// Migrations live in ./migrations and are applied with `prisma migrate deploy`
+// (idempotent — only pending migrations run). See apps/api/README.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Minimal table so the initial migration is non-empty and proves the migration
+/// tool is wired end to end. The /health endpoint itself only needs `SELECT 1`,
+/// so it does not depend on this table — real domain tables arrive with later
+/// modules.
+model HealthCheck {
+  id        Int      @id @default(autoincrement())
+  checkedAt DateTime @default(now()) @map("checked_at")
+
+  @@map("health_check")
+}

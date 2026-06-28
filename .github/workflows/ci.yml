@@ -12,6 +12,26 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+
+    # Real Postgres for the API integration test (web → API → DB path).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: contracthubs
+          POSTGRES_PASSWORD: contracthubs
+          POSTGRES_DB: contracthubs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U contracthubs -d contracthubs"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: 'postgresql://contracthubs:contracthubs@localhost:5432/contracthubs?schema=public'
+
     steps:
       - uses: actions/checkout@v7
 
@@ -29,12 +49,14 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Lint (incl. module boundaries)
+      - name: Lint (incl. flat peer-module boundaries)
         run: pnpm lint
 
-      # Runs domain unit tests, use-case tests, integration tests, the Manifest
-      # contract tests, ledger balance/idempotency tests, and the architecture
-      # edge tests (core/case-lifecycle imports no module; only finance/ledger
-      # imports the postings adapter; domain never imports shared/platform|audit).
+      - name: Apply database migrations (idempotent)
+        run: pnpm --filter @contracthubs/api db:migrate:deploy
+
+      # Runs the API health unit + integration tests (boots NestJS against the
+      # Postgres service above and checks GET /health reports the DB reachable)
+      # and the web /health contract test.
       - name: Test
         run: pnpm test
