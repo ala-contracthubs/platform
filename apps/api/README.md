@@ -11,8 +11,11 @@ src/
   app.module.ts      wires the peer modules together
   modules/
     health/          GET /health — service status + DB connectivity check
+    auth/            mobile/SMS registration — OTP request/verify + account creation
   shared/
     prisma/          PrismaService (the single DB gateway) + PrismaModule
+    sms/             SmsProvider port + dev stub (real gateway TBD, PRD O3)
+    clock/           Clock port + SystemClock (injected so time is testable)
 prisma/
   schema.prisma      models
   migrations/        SQL migrations (applied with db:migrate:deploy)
@@ -29,6 +32,22 @@ pnpm db:migrate                   # apply migrations
 pnpm dev                          # http://localhost:3000
 curl localhost:3000/health        # {"status":"ok","api":"up","db":"up"}
 ```
+
+## Registration (mobile + SMS OTP)
+
+Three steps, all under `/auth/registration`:
+
+1. `POST /auth/registration/otp` `{ "mobile": "+971500000000" }` — sends a 6-digit OTP
+   (valid 5 min) to an E.164 number. In dev the `StubSmsProvider` logs the code instead of
+   sending it.
+2. `POST /auth/registration/verify` `{ "mobile", "code" }` — checks the code (5 wrong
+   attempts ⇒ 10-minute lockout, `429`) and returns a one-shot `verificationToken`.
+3. `POST /auth/registration` `{ "verificationToken", "role": "CLIENT" | "AGENT" }` — creates
+   the `Individual` (UUID canonical id), grants the role (an Agent starts `SOLO`), issues a
+   session, and returns the role's dashboard path.
+
+The SMS gateway (`SmsProvider`) and `Clock` are swappable via DI — a real gateway in prod, a
+fake clock in tests.
 
 ## Migrations
 

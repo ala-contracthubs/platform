@@ -21,3 +21,88 @@ model HealthCheck {
 
   @@map("health_check")
 }
+
+/// A platform-scoped role an Individual can hold. Module 0 ships the two
+/// self-service roles picked at registration; Business-scoped roles (e.g. Agency
+/// Admin) and module-defined roles arrive with later slices.
+enum Role {
+  CLIENT
+  AGENT
+
+  @@map("role")
+}
+
+/// An Agent is either Solo or a member of exactly one Agency. Registration
+/// always starts an Agent as Solo (R1.3); the Agency state and the full
+/// membership lifecycle arrive in the membership slice.
+enum AgentState {
+  SOLO
+  AGENCY
+
+  @@map("agent_state")
+}
+
+/// An account on the platform — every login is an Individual. For the mobile/SMS
+/// path the canonical identifier is a minted internal UUID (R1.6); UAE Pass later
+/// upgrades the canonical id to the Emirates ID. `mobile` is the verified E.164
+/// number and is unique across accounts.
+model Individual {
+  id        String   @id @default(uuid())
+  mobile    String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  roleGrants RoleGrant[]
+  sessions   Session[]
+
+  @@map("individual")
+}
+
+/// A platform-scoped role granted to an Individual. Agents carry an `agentState`
+/// (Solo at registration). One grant per (individual, role).
+model RoleGrant {
+  id           String      @id @default(uuid())
+  individualId String      @map("individual_id")
+  role         Role
+  agentState   AgentState? @map("agent_state")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  individual Individual @relation(fields: [individualId], references: [id], onDelete: Cascade)
+
+  @@unique([individualId, role])
+  @@map("role_grant")
+}
+
+/// An authenticated session issued on successful registration. The active role is
+/// the context the user lands in. The 30-day expiry / re-auth lifecycle is owned
+/// by the login slice; this slice only mints a session.
+model Session {
+  id           String   @id @default(uuid())
+  token        String   @unique
+  individualId String   @map("individual_id")
+  activeRole   Role     @map("active_role")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  individual Individual @relation(fields: [individualId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+/// A one-time SMS OTP challenge for a mobile number. Drives the send → verify
+/// step of registration: the code is stored only as a hash, expires after 5
+/// minutes, and 5 wrong attempts trigger a 10-minute lockout. On a correct code a
+/// one-shot `verificationToken` is minted and later consumed at account creation.
+model OtpChallenge {
+  id                String    @id @default(uuid())
+  mobile            String
+  codeHash          String    @map("code_hash")
+  expiresAt         DateTime  @map("expires_at")
+  attempts          Int       @default(0)
+  lockedUntil       DateTime? @map("locked_until")
+  verifiedAt        DateTime? @map("verified_at")
+  verificationToken String?   @unique @map("verification_token")
+  consumedAt        DateTime? @map("consumed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([mobile])
+  @@map("otp_challenge")
+}
