@@ -1,17 +1,19 @@
 # Contract Hubs — `platform` (coding-agent context)
 
 A pnpm + Turborepo monorepo: three apps plus shared config in `packages/config`
-(`@contracthubs/config`). The apps are folder skeletons for now — tooling lands as work begins.
+(`@contracthubs/config`). `api` and `web` are live workspace members (a walking skeleton with
+an end-to-end `/health` path); `mobile` is still a folder skeleton — its tooling lands later.
 
 ## Apps & layout
 
 ```
 apps/
-  api/      TypeScript / NestJS backend — client-facing APIs
-              src/modules/  peer modules   src/shared/  cross-module code   test/
-  web/      React / Vite frontend — desktop + mobile (PWA)
-              src/modules/  src/shared/  public/
-  mobile/   Expo / React Native — iOS + Android builds
+  api/      TypeScript / NestJS backend — client-facing APIs · Prisma + Postgres
+              src/modules/  peer modules (health)   src/shared/  cross-module code (prisma)
+              prisma/  schema + migrations          test/  integration (e2e) tests
+  web/      React / Vite frontend — desktop + mobile (PWA) · Vitest
+              src/modules/  peer modules (health)   src/shared/  public/
+  mobile/   Expo / React Native — iOS + Android builds (folder skeleton)
               src/modules/  src/shared/  assets/
 packages/
   config/   shared ESLint / Prettier / Jest / tsconfig presets
@@ -28,12 +30,16 @@ packages/
 ## Stack
 
 pnpm workspaces + Turborepo · TypeScript strict · Node 24 (`.nvmrc`, enforced via
-`engine-strict`) · ESLint + Prettier from `@contracthubs/config`.
+`engine-strict`) · ESLint + Prettier from `@contracthubs/config`. Backend: NestJS 11 +
+Prisma 6 on Postgres 16 (local via `docker compose up -d`). Frontend: React + Vite, tested
+with Vitest; API tested with Jest + Supertest.
 
 ## Commands
 
-`pnpm install` · `typecheck` · `lint` · `test` · `format`. CI runs typecheck + lint + test
-on push/PR (no-op until packages define those tasks).
+`pnpm install` · `typecheck` · `lint` · `test` · `build` · `format`. The API integration test
+needs Postgres, so start `docker compose up -d` before `pnpm test` locally. Migrations:
+`pnpm --filter @contracthubs/api db:migrate` (dev) / `db:migrate:deploy` (idempotent apply).
+CI provisions a Postgres service and runs typecheck + lint + migrate + test on push/PR.
 
 ## Conventions
 
@@ -42,11 +48,14 @@ re-deriving config. Commit `pnpm-lock.yaml` changes.
 
 ## Adding a module / package
 
-A module is a peer folder under an app's `src/modules/`. A workspace package goes under
+A module is a peer folder under an app's `src/modules/` (see `apps/api/src/modules/health` for
+the reference shape: types + service + controller + module). A workspace package goes under
 `packages/<name>`. To make an app a workspace member, add its `package.json` + Turborepo
-scripts, re-add `"apps/*"` to `pnpm-workspace.yaml`, and register composite TS projects in
-the root `tsconfig.json` `references`.
+scripts, ensure `"apps/*"` is in `pnpm-workspace.yaml`, register its composite TS project in
+the root `tsconfig.json` `references`, and give it an `eslint.config.mjs` that spreads the
+`@contracthubs/config/eslint` base.
 
-> Leftover: `packages/config/eslint/boundaries.mjs` (wired in `eslint/index.mjs`) still
-> encodes the old DDD boundary rules for `apps/api`. Dormant while there's no `.ts` yet, but
-> it will mis-fire once backend code lands — strip or rewrite it before building `apps/api`.
+> Module boundaries (`packages/config/eslint/boundaries.mjs`) are enforced for `apps/api`:
+> a module must not import another module, and `shared/**` must not import a module. They are
+> app-relative and opt-in per app via `moduleBoundaries` — layer them into `apps/web` when it
+> grows more modules.
