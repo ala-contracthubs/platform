@@ -47,12 +47,12 @@ resource "aws_cloudwatch_dashboard" "this" {
           title  = "ECS CPU/Memory utilization"
           region = var.region
           view   = "timeSeries"
-          metrics = flatten([
-            for k, s in var.services : [
-              ["AWS/ECS", "CPUUtilization", "ClusterName", var.cluster_name, "ServiceName", s.service_name, { stat = "Average" }],
-              ["AWS/ECS", "MemoryUtilization", "ClusterName", var.cluster_name, "ServiceName", s.service_name, { stat = "Average" }],
-            ]
-          ])
+          # concat (NOT flatten — flatten recurses and breaks each metric line):
+          # one metric-array per service per metric.
+          metrics = concat(
+            [for k, s in var.services : ["AWS/ECS", "CPUUtilization", "ClusterName", var.cluster_name, "ServiceName", s.service_name, { stat = "Average" }]],
+            [for k, s in var.services : ["AWS/ECS", "MemoryUtilization", "ClusterName", var.cluster_name, "ServiceName", s.service_name, { stat = "Average" }]],
+          )
         }
       },
       {
