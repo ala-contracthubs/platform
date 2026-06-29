@@ -113,7 +113,7 @@ resource "aws_ecs_task_definition" "migrate" {
 
   runtime_platform {
     operating_system_family = "LINUX"
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = "X86_64" # match amd64 CI-built images
   }
 
   container_definitions = jsonencode([
