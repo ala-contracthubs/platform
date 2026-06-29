@@ -121,10 +121,8 @@ resource "aws_ecs_task_definition" "migrate" {
       name      = "migrate"
       image     = local.api_image
       essential = true
-      command = [
-        "sh", "-lc",
-        "export DATABASE_URL=\"postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=require\" && ./node_modules/.bin/prisma migrate deploy",
-      ]
+      # Ensures the app role + grants (INF-39), then migrates — as master.
+      command = ["sh", "scripts/db-bootstrap-and-migrate.sh"]
       environment = [
         { name = "DB_HOST", value = module.database.cluster_endpoint },
         { name = "DB_PORT", value = tostring(module.database.port) },
@@ -133,6 +131,8 @@ resource "aws_ecs_task_definition" "migrate" {
       secrets = [
         { name = "DB_USER", valueFrom = "${module.database.master_secret_arn}:username::" },
         { name = "DB_PASSWORD", valueFrom = "${module.database.master_secret_arn}:password::" },
+        # App role password is read from this secret's embedded URL.
+        { name = "APP_DB_URL", valueFrom = module.database.app_db_url_secret_arn },
       ]
       logConfiguration = {
         logDriver = "awslogs"
