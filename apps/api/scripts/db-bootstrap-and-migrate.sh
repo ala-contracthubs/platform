@@ -9,7 +9,11 @@ set -e
 
 : "${DB_USER:?}" "${DB_PASSWORD:?}" "${DB_HOST:?}" "${DB_PORT:?}" "${DB_NAME:?}" "${APP_DB_URL:?}"
 
-export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require"
+# Build the URL with node so the master user/password are percent-encoded —
+# the RDS-managed master password can contain URL-special chars (?, #, %, /, …)
+# that break naive string interpolation.
+DATABASE_URL=$(node -e 'const e=encodeURIComponent,p=process.env;process.stdout.write(`postgresql://${e(p.DB_USER)}:${e(p.DB_PASSWORD)}@${p.DB_HOST}:${p.DB_PORT}/${p.DB_NAME}?sslmode=require`)')
+export DATABASE_URL
 
 # App-role password = the password embedded in the app DATABASE_URL secret.
 APP_PW=$(printf '%s' "$APP_DB_URL" | sed -E 's#^postgresql://[^:]+:([^@]+)@.*#\1#')
