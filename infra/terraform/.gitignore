@@ -1,0 +1,23 @@
+# Terraform local state, plugin cache, plan output — never commit
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfplan
+
+# Local override files
+*_override.tf
+*_override.tf.json
+override.tf
+override.tf.json
+
+# Anything secret-bearing accidentally produced locally
+*.tfvars.local
+
+# Provider lock files: not committed in this scaffold to avoid single-platform
+# (darwin-only) hashes breaking linux CI. Before going live, generate a
+# cross-platform lock per stack and commit it:
+#   terraform providers lock -platform=linux_amd64 -platform=darwin_arm64
+.terraform.lock.hcl
