@@ -1,0 +1,18 @@
+# Keep the build context small. turbo prune still needs source + lockfile +
+# package.jsons, so DON'T ignore those — only ignore derived/irrelevant paths.
+**/node_modules
+**/dist
+**/build
+**/.turbo
+.turbo
+.git
+.github
+infra
+docs
+**/coverage
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example
+**/.DS_Store
+apps/mobile

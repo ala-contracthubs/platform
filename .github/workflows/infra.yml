@@ -1,0 +1,85 @@
+name: infra
+
+# Terraform pipeline (INF-47). PR -> plan (both envs). Merge to main -> apply
+# stage automatically, then prod behind the `production` environment gate
+# (add required reviewers in repo Settings -> Environments).
+
+on:
+  pull_request:
+    paths: ['infra/terraform/**', '.github/workflows/infra.yml']
+  push:
+    branches: [main]
+    paths: ['infra/terraform/**', '.github/workflows/infra.yml']
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: eu-west-2
+  TF_IN_AUTOMATION: 'true'
+
+jobs:
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [stage, prod]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/contracthubs-gha-infra
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.4
+      - name: plan (${{ matrix.env }})
+        working-directory: infra/terraform/environments/${{ matrix.env }}
+        run: |
+          terraform init -input=false
+          terraform validate
+          terraform plan -input=false -no-color
+
+  apply-stage:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/contracthubs-gha-infra
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.4
+      - name: apply (stage)
+        working-directory: infra/terraform/environments/stage
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
+
+  apply-prod:
+    if: github.event_name == 'push'
+    needs: apply-stage
+    runs-on: ubuntu-latest
+    environment: production # manual-approval gate (INF-47)
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/contracthubs-gha-infra
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.4
+      - name: apply (prod)
+        working-directory: infra/terraform/environments/prod
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
