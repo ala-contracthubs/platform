@@ -26,7 +26,9 @@ resource "aws_ecs_task_definition" "this" {
 
   runtime_platform {
     operating_system_family = "LINUX"
-    cpu_architecture        = "ARM64" # Graviton — matches node:24-slim/nginx:alpine arm64 builds
+    # x86_64 to match images built on amd64 GitHub runners. (arm64/Graviton is a
+    # later optimization — needs buildx --platform linux/arm64 in CI.)
+    cpu_architecture = "X86_64"
   }
 
   container_definitions = jsonencode([
