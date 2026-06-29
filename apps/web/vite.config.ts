@@ -6,9 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Dev proxy so the web app can call the API's /health on the same origin.
+    // Dev proxy so the web app can call the API on the same origin (health +
+    // the /auth/registration/* mobile-OTP surface).
     proxy: {
       '/health': 'http://localhost:3000',
+      '/auth': 'http://localhost:3000',
     },
   },
   test: {
