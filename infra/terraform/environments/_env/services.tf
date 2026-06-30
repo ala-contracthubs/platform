@@ -36,8 +36,11 @@ module "api" {
   log_retention_days = var.log_retention_days
   kms_key_arn        = aws_kms_key.main.arn
 
+  # APP_ENV distinguishes stage from prod at runtime (NODE_ENV is "production" in
+  # both); the api gates the /docs Swagger UI on it — served in stage, off in prod.
   environment = {
     NODE_ENV   = "production"
+    APP_ENV    = var.env
     PORT       = tostring(local.api_port)
     AWS_REGION = var.region
     LOG_LEVEL  = "info"
