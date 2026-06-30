@@ -4,6 +4,14 @@ A pnpm + Turborepo monorepo: three apps plus shared config in `packages/config`
 (`@contracthubs/config`). `api` and `web` are live workspace members (a walking skeleton with
 an end-to-end `/health` path); `mobile` is still a folder skeleton — its tooling lands later.
 
+## Branching & PRs
+
+- **`main` is protected — never commit or push to it directly.** Always cut a feature branch
+  for changes (`feat/…`, `fix/…`, `docs/…`, `ci/…`) and open a PR into `main`.
+- Trunk-based: `main` is the single long-lived branch and a push to it deploys to staging.
+  Keep branches short-lived and rebase on `main` before opening the PR.
+- One logical change per branch/PR. Conventional-commit messages (`feat(scope): …`).
+
 ## Apps & layout
 
 ```
