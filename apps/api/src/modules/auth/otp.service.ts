@@ -6,6 +6,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common'
+import type { OtpChallenge } from '@prisma/client'
 import { PrismaService } from '../../shared/prisma/prisma.service'
 import { CLOCK, type Clock } from '../../shared/clock/clock'
 import { SMS_PROVIDER, type SmsProvider } from '../../shared/sms/sms.provider'
@@ -80,7 +81,15 @@ export class OtpService {
     return { challengeId: challenge.id, expiresAt }
   }
 
-  async verify(mobile: string, code: string): Promise<OtpVerifyResult> {
+  /**
+   * Validate `code` against the active challenge for `mobile`, applying the
+   * expiry, attempt-count and lockout rules: a wrong code increments the attempt
+   * counter (locking the mobile for {@link LOCKOUT_MS} after {@link MAX_ATTEMPTS}),
+   * an expired or missing code is rejected, and a locked mobile is refused. On a
+   * correct code the matching challenge is returned, ready for the caller to spend
+   * (registration mints a one-shot token; login mints a session).
+   */
+  async checkCode(mobile: string, code: string): Promise<OtpChallenge> {
     const now = this.clock.now()
     const challenge = await this.prisma.otpChallenge.findFirst({
       where: { mobile, consumedAt: null },
@@ -111,10 +120,15 @@ export class OtpService {
       throw new BadRequestException('Invalid code')
     }
 
+    return challenge
+  }
+
+  async verify(mobile: string, code: string): Promise<OtpVerifyResult> {
+    const challenge = await this.checkCode(mobile, code)
     const verificationToken = generateToken()
     await this.prisma.otpChallenge.update({
       where: { id: challenge.id },
-      data: { verifiedAt: now, verificationToken },
+      data: { verifiedAt: this.clock.now(), verificationToken },
     })
     return { verificationToken }
   }

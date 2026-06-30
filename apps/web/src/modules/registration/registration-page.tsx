@@ -15,16 +15,22 @@ type Step =
 /** The F1 mobile registration flow: enter a number → enter the SMS code → pick a
  *  role. `api` is injectable so tests drive the flow without the network;
  *  `onComplete` fires with the created account so the host can route to its
- *  dashboard. */
+ *  dashboard. `initialMobile` pre-fills the number (e.g. carried over from a
+ *  failed login of an unrecognised number); `onLogin` offers a path back to
+ *  login for users who already have an account. */
 export function RegistrationPage({
   api = registrationApi,
   onComplete,
+  onLogin,
+  initialMobile = '',
 }: {
   api?: RegistrationApi
   onComplete?: (result: RegistrationResult) => void
+  onLogin?: () => void
+  initialMobile?: string | undefined
 }) {
   const [step, setStep] = useState<Step>({ kind: 'phone' })
-  const [mobile, setMobile] = useState('')
+  const [mobile, setMobile] = useState(initialMobile)
   const [code, setCode] = useState('')
   const [role, setRole] = useState<RegistrationRole | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -93,6 +99,14 @@ export function RegistrationPage({
           <button type="submit" disabled={busy}>
             Send code
           </button>
+          {onLogin && (
+            <p>
+              Already have an account?{' '}
+              <button type="button" onClick={onLogin}>
+                Log in
+              </button>
+            </p>
+          )}
         </form>
       )}
 
