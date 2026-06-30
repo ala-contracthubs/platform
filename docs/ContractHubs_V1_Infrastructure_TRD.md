@@ -239,9 +239,12 @@ Per environment, one VPC with three subnet tiers across **2 AZs**.
 
 - **INF-36** **Secrets Manager** holds the actual secrets: DB credentials, JWT/session signing
   key, SMS-OTP provider API key. Namespaced `/contracthubs/{env}/*`.
-- **INF-37** Non-secret config (`NODE_ENV`, `PORT`, `AWS_REGION`, `LOG_LEVEL`, public base URLs)
-  is **plain task-definition env vars** from per-env tfvars. (Graduate to **SSM Parameter Store**
-  only if config must change without a redeploy — not at launch.)
+- **INF-37** Non-secret config (`NODE_ENV`, `APP_ENV`, `PORT`, `AWS_REGION`, `LOG_LEVEL`, public
+  base URLs) is **plain task-definition env vars** from per-env tfvars. (Graduate to **SSM
+  Parameter Store** only if config must change without a redeploy — not at launch.) `APP_ENV`
+  (`stage`|`prod`, set from the env's `env` var) is the runtime stage/prod discriminator, since
+  `NODE_ENV` is `production` in both; the **api** gates its `/docs` Swagger UI on it — served in
+  **stage**, returned `404` in **prod**.
 - **INF-38** ECS injects secrets via the task definition `secrets` block; the **task execution
   role** has `secretsmanager:GetSecretValue` + KMS decrypt scoped to **that env's secret ARNs
   only** (prod tasks cannot read stage secrets and vice-versa).
