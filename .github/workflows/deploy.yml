@@ -1,12 +1,12 @@
 name: deploy
 
-# App-deploy pipeline (INF-48). Push to `development` -> build + deploy STAGING.
-# Stable vX.Y.Z tag -> promote the SAME tested digest to PROD (no rebuild),
-# behind the `production` environment gate.
+# App-deploy pipeline (INF-48). Trunk-based: push to `main` -> build + deploy STAGING.
+# Stable vX.Y.Z tag (cut from `main`) -> promote the SAME tested digest to PROD
+# (no rebuild), behind the `production` environment gate.
 
 on:
   push:
-    branches: [development]
+    branches: [main]
     tags: ['v*']
 
 permissions:
@@ -22,7 +22,7 @@ env:
 
 jobs:
   staging:
-    if: github.ref == 'refs/heads/development'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -75,7 +75,7 @@ jobs:
           promote() {
             local repo="$1"
             aws ecr describe-images --repository-name "$repo" --image-ids imageTag="$TAG" >/dev/null \
-              || { echo "No tested image $repo:$TAG. Did development build & FF-merge to main? (INF-49)"; exit 1; }
+              || { echo "No tested image $repo:$TAG. Was this commit pushed to main (which builds & stages it) before tagging? (INF-49)"; exit 1; }
             MANIFEST=$(aws ecr batch-get-image --repository-name "$repo" --image-ids imageTag="$TAG" \
               --query 'images[0].imageManifest' --output text)
             # Tag the existing digest with the semver (immutable: ignore 're-tag' errors).
