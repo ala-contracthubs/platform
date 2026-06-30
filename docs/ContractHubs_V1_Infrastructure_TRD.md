@@ -37,7 +37,7 @@ sections expand each one.
 | D11 | Migrations | **One-off ECS `RunTask`** (`prisma migrate deploy`) before each rollout; **backward-compatible-migrations rule**; roll-forward + PITR rollback. |
 | D12 | Deploy mechanism | **ECS rolling update**, `100%/200%`, **deployment circuit breaker with auto-rollback**. |
 | D13 | CI/CD | **Two GitHub Actions pipelines** (infra Terraform; app deploy), both via **OIDC**, no static keys. |
-| D14 | Release model | Push to **`development` → auto-deploy staging**; stable **`vX.Y.Z` tag on `main` → prod**, deploying the **already-tested digest** (no rebuild). FF-only `development → main`. |
+| D14 | Release model | **Trunk-based**: short-lived branches → PR → merge to **`main`**. Push to **`main` → auto-deploy staging**; stable **`vX.Y.Z` tag on `main` → prod**, deploying the **already-tested digest** (no rebuild). |
 | D15 | Images / ECR | Per-app repos, **immutable tags**, `turbo prune` Dockerfiles, **basic scan-on-push**. |
 | D16 | Image retention | **Release (`v*`) kept forever**; **dev (`sha-*`) expire 30 days**; untagged expire 1 day. |
 | D17 | DNS / TLS | Existing **Route 53** zone (referenced); **per-env explicit-SAN ACM certs**. |
@@ -282,15 +282,16 @@ Two GitHub Actions pipelines, both authenticating to AWS via **OIDC** (no long-l
   comment; merge to `main` → `apply` to **stage automatically**, **prod behind a manual approval
   gate** (GitHub Environment protection rule + required reviewers).
 - **INF-48 — App-deploy pipeline** (trigger: `apps/**` / shared packages):
-  - **Push to `development`** → build image (tag `sha-<gitsha>`) → push ECR → migration RunTask
-    (stage) → rolling deploy to **staging**. Continuous; no tag required.
-  - **Release** → **fast-forward** merge `development → main`, then cut a **stable `vX.Y.Z` tag**
-    on `main`.
+  - **Push to `main`** (i.e. a merged PR) → build image (tag `sha-<gitsha>`) → push ECR →
+    migration RunTask (stage) → rolling deploy to **staging**. Continuous; no tag required.
+  - **Release** → cut a **stable `vX.Y.Z` tag** on a `main` commit that has already been
+    pushed (and thus built & staged).
   - **Stable `vX.Y.Z` tag** → prod pipeline deploys the **exact digest already built & validated
     for that commit** (no rebuild) → migration RunTask (prod) → rolling deploy to **prod**.
-- **INF-49 — Same-digest guarantee:** `development → main` **must be fast-forward** (no new merge
-  commit) so the commit tagged on `main` is the same SHA that was built and tested on staging.
-  A non-FF merge produces an untested commit and breaks the guarantee.
+- **INF-49 — Same-digest guarantee:** the commit a `vX.Y.Z` tag points at is a `main` commit, and
+  every push to `main` builds & stages its `sha-<gitsha>` image — so the tagged commit is by
+  construction the same SHA that was built and tested on staging. (Tagging a commit that was never
+  pushed to `main` finds no image and the prod promote fails fast.)
 - **INF-50 — Image-tag ownership (the gotcha):** Terraform owns the ECS service/task-def *shape*
   and declares `lifecycle { ignore_changes = [<container image>] }`; the **app-deploy pipeline
   owns the image tag exclusively**. They never fight over the running image.
