@@ -1,3 +1,4 @@
+import { apiUrl } from '../../shared/api-base'
 import type { LoginRole, LoginResult, OtpRequestResult, SessionStatus } from './login.types'
 
 /** A failed login call, carrying the HTTP status so the UI can branch — most
@@ -51,10 +52,10 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
  *  dev). Session-check maps the endpoint's 200 / 401 contract to a status union
  *  rather than throwing, since expiry and absence are expected outcomes. */
 export const loginApi: LoginApi = {
-  requestOtp: (mobile) => postJson('/auth/login/otp', { mobile }),
-  verifyOtp: (mobile, code) => postJson('/auth/login/verify', { mobile, code }),
+  requestOtp: (mobile) => postJson(apiUrl('/auth/login/otp'), { mobile }),
+  verifyOtp: (mobile, code) => postJson(apiUrl('/auth/login/verify'), { mobile, code }),
   checkSession: async (token) => {
-    const res = await fetch('/auth/session', {
+    const res = await fetch(apiUrl('/auth/session'), {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (res.ok) {
