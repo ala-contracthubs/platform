@@ -1,3 +1,4 @@
+import { apiUrl } from '../../shared/api-base'
 import type {
   OtpRequestResult,
   OtpVerifyResult,
@@ -52,8 +53,8 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 
 /** Production API: POSTs to the API's /auth/registration/* (proxied in dev). */
 export const registrationApi: RegistrationApi = {
-  requestOtp: (mobile) => postJson('/auth/registration/otp', { mobile }),
-  verifyOtp: (mobile, code) => postJson('/auth/registration/verify', { mobile, code }),
+  requestOtp: (mobile) => postJson(apiUrl('/auth/registration/otp'), { mobile }),
+  verifyOtp: (mobile, code) => postJson(apiUrl('/auth/registration/verify'), { mobile, code }),
   register: (verificationToken, role) =>
-    postJson('/auth/registration', { verificationToken, role }),
+    postJson(apiUrl('/auth/registration'), { verificationToken, role }),
 }
